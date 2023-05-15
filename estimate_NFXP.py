@@ -21,7 +21,7 @@ def estimate(model,solver,data,theta0=[0,0],twostep=0):
     model.p[:] = p # Use first step estimates as starting values for p
     
     # Estimate RC and C
-    pnames = ['RC','c']
+    pnames = ['mu','eta2']
     
     # Call BHHH optimizer
     res = optimize.minimize(ll,theta0,args = (model, solver, data, pnames), method = 'trust-ncg',jac = grad, hess = hes, tol=1e-8)
@@ -30,8 +30,8 @@ def estimate(model,solver,data,theta0=[0,0],twostep=0):
     
     # Estimate RC, c and p
     if twostep == 0:
-        pnames = ['RC','c','p']
-        theta0 = [model.RC, model.c] + model.p.tolist() # Starting values
+        pnames = ['mu','eta2','p']
+        theta0 = [model.mu, model.eta2] + model.p.tolist() # Starting values
         # Call BHHH optimizer
         res = optimize.minimize(ll,theta0, args = (model,solver,data, pnames), method = 'trust-ncg',jac = grad, hess = hes, tol = 1e-8)
 
@@ -129,7 +129,7 @@ def score(theta, model, solver, data, pnames):
     # Derivative of contraction operator wrt. p
     if theta.size>2:        
         vk = -model.cost + model.beta * model.P1 @ ev # Value of keeping
-        vr = -model.RC-model.cost[0]+model.beta *model.P2 @ ev # Value of replacing
+        vr = -model.mu-model.cost[0]+model.beta *model.P2 @ ev # Value of replacing
         vmax = np.maximum(vk,vr) # Get maximum value
         dbellman_dpi = vmax+np.log(np.exp(vk-vmax)+np.exp(vr-vmax)) #Re-centered log-sum: Value functin 
         for i_p in range(n_p): # loop over p

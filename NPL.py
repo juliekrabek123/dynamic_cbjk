@@ -31,7 +31,7 @@ def estimate(model, data, Kmax = 100):
     
     #Set starting valiues
     pk0 = np.ones((model.n))*0.99  # starting value for CCP's
-    theta0 = [0,0] # starting value for parameters 
+    theta0 = [0,0,0] # starting value for parameters 
 
     #Outer loop: Will update CCPs until convergence or Kmax iterations are reached
     for _ in range(Kmax): #
@@ -53,6 +53,7 @@ def estimate(model, data, Kmax = 100):
             return res, theta_hat,pk
     
     print(f'The function did not converge after {K} iterations')
+    print(res)
     
     return res, theta_hat, pk
 
@@ -64,6 +65,7 @@ def ll(theta, model, data, pk0,out=1):
     # update parameters
     model.mu = theta[0]
     model.eta2 = theta[1]
+    model.eta3 = theta[2]
     model.create_grid()
 
     # Update CCPs
@@ -92,10 +94,10 @@ def score(theta, model, data, pk0):
     score = np.zeros((NT,theta.size))
     dP = model.P1[0,:]-model.P1  
 
-    dvdRC = np.ravel(-1+model.beta*dP@model.Finv@(1-pk[:,np.newaxis])*(-1))
-    dvdc = np.ravel(model.dc + model.beta*dP@model.Finv@(pk*(-model.dc)))
-    score[:,0] = res*dvdRC[data.x]
-    score[:,1] = res*dvdc[data.x]
+    dvdmu = np.ravel(-1+model.beta*dP@model.Finv@(1-pk[:,np.newaxis])*(-1))
+    dvdeta2 = np.ravel(model.dc + model.beta*dP@model.Finv@(pk*(-model.dc)))
+    score[:,0] = res*dvdmu[data.x]
+    score[:,1] = res*dvdeta2[data.x]
 
     return score 
 
