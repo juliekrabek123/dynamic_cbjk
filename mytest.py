@@ -14,16 +14,16 @@ class model():
         # a) parameters
         # Spaces
         self.n = 5                     # Number of grid points
-        #self.max = 450                    # Max of mileage
+        self.max = 5                    # Max of children
 
         # structual parameters
         self.p = np.array([0.2, 0.8])             # Transition probability
         self.eta1 = 0.13 
         self.eta2 = 0.15 
-        #self.eta3 = -0.04                                       # Replacement cost
-        self.mu = -0.12                                      # Cost parameter
-        self.beta = 0.9999
-        #self.utility = eta2*x + eta3*x**2 + mu*d                                     # Discount factor
+        self.eta3 = -0.4                                   # marginal utility of children
+        self.mu = -0.12                                      # Cost of contraception
+        self.beta = 0.9999                                   # Discount factor
+        #self.utility = eta2*x + eta3*x**2 + mu*d                         
 
         # b. update baseline parameters using keywords
         for key,val in kwargs.items():
@@ -33,9 +33,9 @@ class model():
         self.create_grid()
 
     def create_grid(self):
-        self.grid = np.arange(0,self.n) # milage grid
-        self.cost = self.eta2*self.grid + self.eta2*self.grid**2  # cost function
-        self.dc = self.grid
+        self.grid = np.arange(0,self.n) # grid
+        self.cost = self.eta2*self.grid*0.001 - self.eta2*(self.grid*0.001)**2  # cost function
+        self.dc = 0.001*self.grid
         self.state_transition() 
 
     def state_transition(self):
@@ -52,12 +52,15 @@ class model():
                 P1[i][-1] = 1.0-P1[i][:-1].sum()
 
         # conditional on d=1, replacement
-        P2 = np.zeros((self.n,self.n))
+        #P2 = np.zeros((self.n,self.n))
         # Loop over rows
-        for i in range(self.n):
-            P2[i][:len(p)]=p
+        #for i in range(self.n):
+        #    P2[i][:len(p)]=p
+        P2 = np.identity(5)
         self.P1 = P1
         self.P2 = P2
+
+       
         
     def unc_state_transition(self,pk):
         #Calculate unconditional transition matrix
@@ -88,8 +91,8 @@ class model():
         eulerc = np.euler_gamma
 
         # Compute Vsigma
-        value_0 = self.cost + self.mu  + eulerc-np.log(pk)
-        value_1 = self.cost + eulerc - np.log(1-pk) 
+        value_0 = self.cost  + eulerc-np.log(pk)
+        value_1 = self.cost + self.mu + eulerc - np.log(1-pk) 
         pv = value_0*pk + value_1*(1-pk)
 
         self.Vsigma = np.ravel(self.Finv@pv)
@@ -97,8 +100,8 @@ class model():
     def lambdaa(self):
         '''Evaluate lambda function (mapping from Vsigma to updated CCP)'''
         #Compute choice probability
-        value_0 = self.cost + self.mu + self.beta*self.P1@self.Vsigma
-        value_1 = self.cost + self.beta*self.P1[0,:]@self.Vsigma 
+        value_0 = self.cost + self.beta*self.P1@self.Vsigma
+        value_1 = self.cost + self.mu + self.beta*self.P1[0,:]@self.Vsigma 
         pk=1/(1+np.exp(value_1-value_0))
         
         return  pk
@@ -122,7 +125,7 @@ class model():
         pk = 1/(1+np.exp(value_1-value_0))       
         
         if output == 2:
-            return len(pk)
+            return pk
 
         # Compute derivative of Bellman operator
         dev1 = self.dbellman(pk)
@@ -211,7 +214,7 @@ class model():
             dx1 += u_dxd>val
 
         for it in range(T):
-            x1[it,:] = np.minimum((x[it,:] + dx1[it,:] ), self.n-1) # State transition, minimum to avoid exceeding the maximum mileage
+            x1[it,:] = np.minimum((x[it,:] + dx1[it,:] ), self.n-2) # State transition, minimum to avoid exceeding the maximum mileage
             if it < T-1:
                 x[it+1,:] = x1[it,:]
             
