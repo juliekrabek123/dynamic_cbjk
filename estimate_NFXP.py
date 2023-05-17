@@ -6,7 +6,7 @@ import scipy.optimize as optimize
 
 ev = np.zeros(1) # Global variable
 
-def estimate(model,solver,data,theta0=[0,0],twostep=0):
+def estimate(model,solver,data,theta0=[0,0,0],twostep=0):
     """" Estimate model using NFXP"""
     global ev
     ev = np.zeros((model.n)) 
@@ -21,7 +21,7 @@ def estimate(model,solver,data,theta0=[0,0],twostep=0):
     model.p[:] = p # Use first step estimates as starting values for p
     
     # Estimate mu and eta2
-    pnames = ['mu','eta2', 'eta3']
+    pnames = ['mu','eta2','eta3']
     
     # Call BHHH optimizer
     res = optimize.minimize(ll,theta0,args = (model, solver, data, pnames), method = 'trust-ncg',jac = grad, hess = hes, tol=1e-8)
@@ -31,7 +31,7 @@ def estimate(model,solver,data,theta0=[0,0],twostep=0):
     # Estimate my, eta2 and p
     if twostep == 0:
         pnames = ['mu','eta2', 'eta3','p', 'p2']
-        theta0 = [model.mu, model.eta2, model.eta3] + model.p.tolist() # Starting values
+        theta0 = [model.mu, model.eta2, model.eta3] + model.p # Starting values
         # Call BHHH optimizer
         res = optimize.minimize(ll,theta0, args = (model,solver,data, pnames), method = 'trust-ncg',jac = grad, hess = hes, tol = 1e-8)
 
@@ -39,7 +39,7 @@ def estimate(model,solver,data,theta0=[0,0],twostep=0):
         model=updatepar(model,pnames,res.x)
 
     # Converged: "trust-ncg tends to be very conservative about convergence, and will often return status 2 even when the solution is good."
-    converged   =   (res.status == 2 or res.status ==0)
+    converged   =   (res.status == 2 or res.status ==0) #!!
 
     # Compute Variance-Covaiance matrix
     h = hes(res.x, model, solver,data, pnames) # Hessian
@@ -54,7 +54,7 @@ def ll(theta, model, solver,data, pnames, out=1, no_guess = False): # out=1 solv
     global ev # Use global variable to store value function to use as starting value for next iteration
     
     # Unpack and convert to numpy array
-    x = np.array(data.x )       #-1 ) # x is the index of the observed state: We subtract 1 because python starts counting at 0 - Har fjernet -1
+    x = np.array(data.x-1 )       #-1 ) # x is the index of the observed state: We subtract 1 because python starts counting at 0 
     d = np.array(data.d)        # d is the observed decision
     dx1 = np.array(data.dx1)    # dx1 is observed change in x 
 

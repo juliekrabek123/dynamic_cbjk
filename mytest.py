@@ -31,11 +31,11 @@ class child_model():
 
         # structual parameters
         self.p = np.array([0.3, 0.7]) 
-        self.p2 = np.array([0.99999, 0.00001])            # Transition probability
+        self.p2 = np.array([0.97, 0.03])            # Transition probability
         self.eta1 = 0.13 
         self.eta2 = 0.15 
-        self.eta3 = -0.2                                   # marginal utility of children
-        self.mu = 0.9                                      # Cost of contraception
+        self.eta3 = -0.5                                   # marginal utility of children
+        self.mu = -0.12                                      # Cost of contraception
         self.beta = 0.9999                                   # Discount factor
         #self.utility = eta2*x + eta3*x**2 + mu*d                         
 
