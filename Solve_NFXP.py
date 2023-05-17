@@ -115,7 +115,7 @@ class solve_NFXP():
         for i in range(self.pi_max):
 
             # Do N-K step
-            V1, pk, dV = bellman(V0,output=3)
+            V1, pk, dV = bellman(V0, output=3)
             F = np.eye(m)-dV
             V = V0 - np.linalg.inv(F) @ (V0 - V1) 
             
