@@ -24,6 +24,10 @@ class child_model():
         # c. marriage age
         self.marriage_age = 24
 
+        self.death_age = 76
+
+        self.meno_p_years = self.death_age - self.terminal_age  
+
         # d. number of time periods doing fertile years 
         self.T = self.terminal_age - self.marriage_age
 
@@ -87,6 +91,15 @@ class child_model():
 
         # recenter Bellman by subtracting max(VK, VR)
         maxV = np.maximum(value_0, value_1) 
+        d = np.zeros(self.n)
+        for i in range(self.n):
+            if maxV[i] == value_0[i]:
+                d[i] = 0
+            else:
+                d[i] = 1
+        
+
+
         logsum = (maxV + np.log(np.exp(value_0-maxV)  +  np.exp(value_1-maxV)))  # Compute logsum to handle expectation over unobserved states
         ev1 = logsum # Bellman operator as integrated value
 
@@ -98,6 +111,9 @@ class child_model():
         
         if output == 2:
             return ev1, pk
+        
+        if output == 3:
+            return ev1, pk, d, value_0, value_1
 
         # Compute derivative of Bellman operator
         dev1 = self.dbellman(pk)
