@@ -95,6 +95,8 @@ def score(theta, model, solver, data, pnames):
     F = np.eye(model.n)-dev    
     N = data.x.size
     dc = model.grid-theta[1]*(model.grid**2)
+    dc_t1 = (model.grid+1)-theta[1]*((model.grid+1)**2)
+    pk = pk.reshape((model.n,1))
 
     # Compute the score
     if theta.size>2:
@@ -103,15 +105,29 @@ def score(theta, model, solver, data, pnames):
         n_p = 0
 
     # Step 1: compute derivative of contraction operator wrt. parameters
-    dbellman_dtheta=np.zeros((model.n,2 + n_p)) 
-    dbellman_dtheta[:,0] = (1-pk)*(-1) # derivative wrt mu
-    dbellman_dtheta[:,1] = pk*(-dc)   # derivative wrt c
+    dutil_dtheta = np.zeros((model.n, 2 + n_p, 2)) 
+    dutil_dtheta[:,0, 0] = 0 # derivative of keeping wrt mu
+    dutil_dtheta[:,0, 1] = 1 # derivative of replacing wrt mu
+    dutil_dtheta[:,1, 0] = model.p[0]*dc+(1-model.p[0])*dc_t1 # derivative of not contraception wrt eta2
+    dutil_dtheta[:,1, 1] =  model.p2[0]*dc+(1-model.p2[0])*dc_t1# derivative of contraception wrt eta2
 
-    if theta.size>2:        
-        vk= self.p[0]*self.cost+ (1-self.p[0])*(self.eta2*(self.grid+1) - self.eta2*((self.grid+1)**2))  + self.beta * ev0 # nx1 matrix
-        vr = self.p2[0]*self.cost+ (1-self.p2[0])*(self.eta2*(self.grid+1) - self.eta2*((self.grid+1)**2)) + self.mu + self.beta * ev0   # nx1
-        vmax = np.maximum(vk,vr)
-        dbellman_dpi = vmax+np.log(np.exp(vk-vmax)+np.exp(vr-vmax))
+    # dbellman_dtheta[:,0] = (1-pk)*(1) # derivative wrt mu
+    # dbellman_dtheta[:,1] = pk*(dc)   # derivative wrt c
+
+    dbellman_dtheta = np.zeros((model.n, 2 + n_p))      # shape is (gridsize, number of parameters)
+    dbellman_dtheta[:,:] =  (pk * dutil_dtheta[:, :, 0] + (1 - pk) * dutil_dtheta[:, :, 1])
+
+
+    # Derivative of contraction operator wrt. p
+    if theta.size>2:
+        # Value of keeping        
+        vk = model.cost + model.beta * model.P1 @ ev 
+        # Value of replacing
+        vr = model.mu + model.cost+model.beta * model.P2 @ ev 
+        # Get maximum value
+        vmax = np.maximum(vk,vr) 
+        # Re-centered log-sum: Value functin 
+        dbellman_dpi = vmax+np.log(np.exp(vk-vmax)+np.exp(vr-vmax)) 
 
         for i_p in range(n_p):
             part1 = dbellman_dpi[i_p:-1]
@@ -134,7 +150,7 @@ def score(theta, model, solver, data, pnames):
     return score
 
 def grad(theta, model, solver,data, pnames):
-    s = score(theta, model, solver, data,pnames)
+    s = score(theta, model, solver, data, pnames)
     return -np.mean(s,0)
 
 def hes(theta, model, solver,data, pnames):
