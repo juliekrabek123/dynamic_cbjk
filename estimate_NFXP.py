@@ -14,12 +14,17 @@ def estimate(model,solver,data,theta0=[0,0,0],twostep=0):
     samplesize = data.shape[0]
     
     # STEP 1: Find p non-parametrically
-    tabulate = data.dx1.value_counts() # Count number of observations for each dx1
-    p = [tabulate[i]/sum(tabulate) if i < len(tabulate) else 0 for i in range(len(model.p))]
+    datad0 = data[data['d']==0]
+    datad1 = data[data['d']==1]
+    
+    tabulate0 = datad0.dx1.value_counts() #Count number of observations for each dx1
+    tabulate1 = datad1.dx1.value_counts()
+    p = [tabulate0[i]/sum(tabulate0) for i in range(tabulate0.size-1)]
+    p2 = [tabulate1[i]/sum(tabulate1) for i in range(tabulate1.size-1)]
 
     # STEP 2: Estimate structual parameters
     model.p[:] = p # Use first step estimates as starting values for p
-    
+    model.p2[:] = p2
     # Estimate mu and eta2
     pnames = ['mu','eta2','eta3']
     
@@ -30,8 +35,8 @@ def estimate(model,solver,data,theta0=[0,0,0],twostep=0):
     
     # Estimate my, eta2 and p
     if twostep == 0:
-        pnames = ['mu','eta2', 'eta3','p', 'p2']
-        theta0 = [model.mu, model.eta2, model.eta3] + model.p # Starting values
+        pnames = ['mu','eta2', 'eta3','p']
+        theta0 = [model.mu, model.eta2, model.eta3] + model.p.tolist() # Starting values
         # Call BHHH optimizer
         res = optimize.minimize(ll,theta0, args = (model,solver,data, pnames), method = 'trust-ncg',jac = grad, hess = hes, tol = 1e-8)
 
@@ -54,7 +59,7 @@ def ll(theta, model, solver,data, pnames, out=1, no_guess = False): # out=1 solv
     global ev # Use global variable to store value function to use as starting value for next iteration
     
     # Unpack and convert to numpy array
-    x = np.array(data.x-1 )       #-1 ) # x is the index of the observed state: We subtract 1 because python starts counting at 0 
+    x = np.array(data.x)       #-1 ) # x is the index of the observed state: We subtract 1 because python starts counting at 0 
     d = np.array(data.d)        # d is the observed decision
     dx1 = np.array(data.dx1)    # dx1 is observed change in x 
 
@@ -98,8 +103,10 @@ def score(theta, model, solver, data, pnames):
     model,lik_pr, pk, ev, dev, d,x,dx1 = ll(theta, model, solver, data, pnames,9) # Evaluate likelihood function
     F = np.eye(model.n)-dev         # Get frechet derivative     
     N = data.x.size                 # Number of observations
-    dc = model.grid                 # Get derivative of cost function in utility wrt eta2
+    dc = model.grid 
+    dct1 = model.grid+1           # Get derivative of cost function in utility wrt eta2
     dc2 = 2*model.grid*theta[2]
+    dc2t1= 2*(model.grid+1)*theta[2]     # Get derivative of cost function in utility wrt eta3
     pk = pk.reshape((model.n,1))    # Reshape to get correct shape for matrix multiplication
 
     ##### COMPUTE THE SCORE #######
@@ -115,10 +122,14 @@ def score(theta, model, solver, data, pnames):
     dutil_dtheta=np.zeros((model.n, 3 + n_p, 2)) # shape is (gridsize, number of parameters, number of choices in utility function)
     dutil_dtheta[:,0, 0] = 0 # derivative of keeping wrt mu
     dutil_dtheta[:,0, 1] = 1 # derivative of replacing wrt mu
-    dutil_dtheta[:,1, 0] = -dc # derivative of not contraception wrt eta2
-    dutil_dtheta[:,1, 1] = -dc # derivative of contraception wrt eta2
-    dutil_dtheta[:,2, 0] = -dc2 # derivative of not contraception wrt eta3
-    dutil_dtheta[:,2, 1] = -dc2 # derivative of contraception wrt eta3
+    dutil_dtheta[:,1, 0] = dc  # derivative of not contraception wrt eta2
+    dutil_dtheta[:,1, 1] = dc  # derivative of contraception wrt eta2
+    dutil_dtheta[:,2, 0] = dc2  # derivative of not contraception wrt eta3
+    dutil_dtheta[:,2, 1] = dc2
+    # dutil_dtheta[:,1, 0] = model.p[0]* dc + (1-model.p[0])* dct1  # derivative of not contraception wrt eta2
+    # dutil_dtheta[:,1, 1] = model.p2[0]* dc + (1-model.p2[0])* dct1  # derivative of contraception wrt eta2
+    # dutil_dtheta[:,2, 0] = model.p[0]* dc2 + (1-model.p[0])* dc2t1  # derivative of not contraception wrt eta3
+    # dutil_dtheta[:,2, 1] = model.p2[0]* dc2 + (1-model.p2[0])* dc2t1  # derivative of contraception wrt eta3
 
     # Derivative of contraction operator wrt. utility parameters
     dbellman_dtheta = np.zeros((model.n, 3 + n_p))      # shape is (gridsize, number of parameters)

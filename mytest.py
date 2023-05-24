@@ -23,7 +23,7 @@ class child_model():
         self.terminal_age = 44
 
         # c. marriage age
-        self.marriage_age = 34
+        self.marriage_age = 24
 
         # d. number of time periods doing fertile years 
         self.T = self.terminal_age - self.marriage_age
@@ -34,7 +34,7 @@ class child_model():
         self.p2 = np.array([0.97, 0.03])            # Transition probability
         self.eta1 = 0.13 
         self.eta2 = 0.15 
-        self.eta3 = -0.5                                   # marginal utility of children
+        self.eta3 = -0.05                                   # marginal utility of children
         self.mu = -0.12                                      # Cost of contraception
         self.beta = 0.9999                                   # Discount factor
         #self.utility = eta2*x + eta3*x**2 + mu*d                         
@@ -48,8 +48,8 @@ class child_model():
 
     def create_grid(self):
         self.grid = np.arange(0,self.n) # grid
-        self.cost = self.eta2*self.grid + self.eta3*(self.grid**2)  # cost function
-        #self.dc = self.grid*0.001 - 2*self.eta2*(self.grid*0.001)
+        #self.cost = self.eta2*self.grid + self.eta3*(self.grid**2)  # cost function
+        self.cost = self.eta2*self.grid - self.eta2*(self.grid**2) 
         self.state_transition() 
 
     def state_transition(self):
@@ -89,13 +89,15 @@ class child_model():
 
     
 
-    def bellman(self,ev0=np.zeros(1),output=1):
+    def bellman(self,ev0,output=1):
 
         # Value of options:
 
-        value_0 = self.cost  + self.beta * ev0 # nx1 matrix
-        value_1 = self.cost + self.mu + self.beta * ev0   # nx1
-
+       # value_0 = self.cost+ (1-self.p[0])*(self.eta2*(self.grid+1) - self.eta2*((self.grid+1)**2))  + self.beta * ev0 # nx1 matrix
+       # value_1 = self.p2[0]*self.cost+ (1-self.p2[0])*(self.eta2*(self.grid+1) - self.eta2*((self.grid+1)**2)) + self.mu + self.beta * ev0   # nx1
+        # Value of options:
+        value_0 = self.cost + self.beta * self.P1 @ ev0 # nx1 matrix
+        value_1 = self.mu + self.cost + self.beta * self.P2 @ ev0   # 1x1
         
         # recenter Bellman by subtracting max(VK, VR)
         maxV = np.maximum(value_0,value_1) 
@@ -370,48 +372,48 @@ class child_model():
 
     #     return df
 
-    # def eqb(self, pk):
-    #     # Inputs
-    #     # pk: choice probability
+    def eqb(self, pk):
+        # Inputs
+        # pk: choice probability
 
-    #     # Outputs    
-    #     # pp: Pr{x} (Equilibrium distribution of mileage)
-    #     # pp_K: Pr{x,i=Keep}
-    #     # pp_R: Pr{x,i=Replace}
-    #     tmp =self.P1[:,1:self.n] * pk[1:self.n]
-    #     pl = np.hstack(((1-np.sum(tmp,1,keepdims=True)), tmp)) 
+        # Outputs    
+        # pp: Pr{x} (Equilibrium distribution of mileage)
+        # pp_K: Pr{x,i=Keep}
+        # pp_R: Pr{x,i=Replace}
+        tmp =self.P1* pk  #!!
+        #pl = np.hstack(((1-np.sum(tmp,1,keepdims=True)), tmp)) 
 
-    #     pp = self.ergodic(pl)
+        pp = self.ergodic(tmp)
 
-    #     pp_K = pp.copy()    
-    #     pp_K[0] = self.p[0]*pp[0]*pk[0]
-    #     pp_R = (1-pk)*pp # Vær opmærksom på at dette måske skal ændres hvis sandsynligheden for uønsket børn ændre sig
+        pp_K = pp.copy()    
+        pp_K[0] = self.p[0]*pp[0]*pk[0]
+        pp_R = (1-pk)*pp # Vær opmærksom på at dette måske skal ændres hvis sandsynligheden for uønsket børn ændre sig
 
-    #     return pp, pp_K, pp_R
+        return pp, pp_K, pp_R
 
-    # def ergodic(self,p):
-    #     #ergodic.m: finds the invariant distribution for an NxN Markov transition probability: q = qH , you can also use Succesive approximation
-    #     n = p.shape[0]
-    #     if n != p.shape[1]:
-    #         print('Error: p must be a square matrix')
-    #         ed = np.nan
-    #     else:
-    #         ap = np.identity(n)-p.T
-    #         ap = np.concatenate((ap, np.ones((1,n))))
-    #         ap = np.concatenate((ap, np.ones((n+1,1))),axis=1)
+    def ergodic(self,p):
+        #ergodic.m: finds the invariant distribution for an NxN Markov transition probability: q = qH , you can also use Succesive approximation
+        n = p.shape[0]
+        if n != p.shape[1]:
+            print('Error: p must be a square matrix')
+            ed = np.nan
+        else:
+            ap = np.identity(n)-p.T
+            ap = np.concatenate((ap, np.ones((1,n))))
+            ap = np.concatenate((ap, np.ones((n+1,1))),axis=1)
 
-    #         # find the number of linearly independent columns
-    #         temp, _ = np.linalg.eig(ap)
-    #         temp = ap[temp==0,:]
-    #         rank = temp.shape[1]
-    #         if rank < n+1:
-    #             print('Error: transition matrix p is not ergodic')
-    #             ed = np.nan
-    #         else:
-    #             ed = np.ones((n+1,1))
-    #             ed[n] *=2
-    #             ed = np.linalg.inv(ap)@ed
-    #             ed = ed[:-1]
-    #             ed = np.ravel(ed)
+            # find the number of linearly independent columns
+            temp, _ = np.linalg.eig(ap)
+            temp = ap[temp==0,:]
+            rank = temp.shape[1]
+            if rank < n+1:
+                print('Error: transition matrix p is not ergodic')
+                ed = np.nan
+            else:
+                ed = np.ones((n+1,1))
+                ed[n] *=2
+                ed = np.linalg.inv(ap)@ed
+                ed = ed[:-1]
+                ed = np.ravel(ed)
 
-    #     return ed
+        return ed
