@@ -106,31 +106,31 @@ class child_model():
         if output == 1:
             return ev1
 
-        # Compute choice probability of keep
-        pk = 1/(1+np.exp(value_1-value_0))       
+        # Compute choice probability of not contracepting
+        pnc = 1/(1+np.exp(value_1-value_0))       
         
         if output == 2:
-            return ev1, pk
+            return ev1, pnc
         
         
         if output == 4:
-            return ev1, pk, d, value_0, value_1
+            return ev1, pnc, d, value_0, value_1
 
         # Compute derivative of Bellman operator
-        dev1 = self.dbellman(pk)
+        dev1 = self.dbellman(pnc)
 
-        return ev1, pk, dev1
+        return ev1, pnc, dev1
 
-    def dbellman(self,pk): 
+    def dbellman(self,pnc): 
         '''Compute derivative of Bellman operator'''
         dev1 = np.zeros((self.n,self.n))
         for d in range(2): # Loop over choices 
             if d == 0:
                 P = self.P1
-                choice_prob =  pk
+                choice_prob =  pnc
             else:
                 P = self.P2
-                choice_prob = 1-pk
+                choice_prob = 1-pnc
 
             dev1 += self.beta * choice_prob.reshape(-1, 1) * P 
         
@@ -138,7 +138,7 @@ class child_model():
 
 
 
-    def sim_data(self, pk):
+    def sim_data(self, pnc):
         # Set N (number of couples) and T (fertile years)
         N = self.N
         T = self.T
@@ -169,12 +169,12 @@ class child_model():
         x[0,:] = np.zeros((1,N)) # u_init.astype(int)
 
         for it in range(T):
-            d[it,:] = u_d[it,:] < 1-pk[x[it,:]]   # Contracept = 1 , not contracept = 0 for s in range(T*N):
+            d[it,:] = u_d[it,:] < 1-pnc[x[it,:]]   # Contracept = 1 , not contracept = 0 for s in range(T*N):
 
 
         for s in range(T):
             for r in range(N):
-                d[s,r] = u_d[s,r] < 1-pk[x[s,r]]   # Contracept = 1 , not contracept = 0 for s in range(T*N):
+                d[s,r] = u_d[s,r] < 1-pnc[x[s,r]]   # Contracept = 1 , not contracept = 0 for s in range(T*N):
                 if d[s,r] == 0:
                 # Find states and choices
                     csum_p1 = np.cumsum(self.p1)               # Cumulated sum of p 
@@ -217,51 +217,6 @@ class child_model():
 
         return(df)
 
-    def eqb(self, pk):
-        # Inputs
-        # pk: choice probability
-
-        # Outputs    
-        # pp: Pr{x} (Equilibrium distribution of mileage)
-        # pp_K: Pr{x,i=Keep}
-        # pp_R: Pr{x,i=Replace}
-
-        tmp =self.P1 * pk
-    
-        pp = self.ergodic(tmp)
-
-        pp_K = pp.copy()    
-        #pp_K[0] = self.p1[0]*pp[0]*pk[0]
-        pp_R = (1-pk)*pp
-
-        return pp, pp_K, pp_R
-
-    def ergodic(self,p):
-        #ergodic.m: finds the invariant distribution for an NxN Markov transition probability: q = qH , you can also use Succesive approximation
-        n = p.shape[0]
-        if n != p.shape[1]:
-            print('Error: p must be a square matrix')
-            ed = np.nan
-        else:
-            ap = np.identity(n)-p.T
-            ap = np.concatenate((ap, np.ones((1,n))))
-            ap = np.concatenate((ap, np.ones((n+1,1))),axis=1)
-
-            # find the number of linearly independent columns
-            temp, _ = np.linalg.eig(ap)
-            temp = ap[temp==0,:]
-            rank = temp.shape[1]
-            if rank < n+1:
-                print('Error: transition matrix p is not ergodic')
-                ed = np.nan
-            else:
-                ed = np.ones((n+1,1))
-                ed[n] *=2
-                ed = np.linalg.inv(ap)@ed
-                ed = ed[:-1]
-                ed = np.ravel(ed)
-
-        return ed
 
 
     def read_data(self): 
