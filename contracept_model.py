@@ -33,7 +33,7 @@ class child_model():
 
         # structual parameters
         self.p = np.array([0.9, 0.1]) 
-        self.p1 = np.array([0.01, 0.99]) 
+        self.p1 = np.array([0.6, 0.4]) 
         self.p2 = np.array([0.97, 0.03])            # Transition probability
         self.eta1 = 0.13 
         self.eta2 = 0.15 
