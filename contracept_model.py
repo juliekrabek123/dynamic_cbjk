@@ -33,12 +33,12 @@ class child_model():
 
         # structual parameters
         self.p = np.array([0.9, 0.1]) 
-        self.p1 = np.array([0.3, 0.7]) 
+        self.p1 = np.array([0.01, 0.99]) 
         self.p2 = np.array([0.97, 0.03])            # Transition probability
         self.eta1 = 0.13 
         self.eta2 = 0.15 
-        self.eta3 = 0.05                                   # marginal utility of children
-        self.mu = 0.12                                      # Cost of contraception
+        self.eta3 = -0.05                                   # marginal utility of children
+        self.mu = -0.12                                      # Cost of contraception
         self.beta = 0.99                                      # Discount factor
 
         # b. update baseline parameters using keywords
@@ -50,7 +50,7 @@ class child_model():
 
     def create_grid(self):
         self.grid = np.arange(0,self.n) # milage grid
-        self.cost = self.eta2*self.grid - self.eta3*(self.grid**2)   # cost function
+        self.cost = self.eta2*self.grid + self.eta3*(self.grid**2)   # cost function
         self.state_transition() 
 
     def state_transition(self):
@@ -87,7 +87,7 @@ class child_model():
 
         # Value of options:
         value_0 = self.cost + self.beta * self.P1 @ ev0 # nx1 matrix
-        value_1 = -self.mu + self.cost + self.beta * self.P2 @ ev0   # nx1 matrix
+        value_1 = self.mu + self.cost + self.beta * self.P2 @ ev0   # nx1 matrix
 
         # recenter Bellman by subtracting max(VK, VR)
         maxV = np.maximum(value_0, value_1) 
@@ -295,3 +295,11 @@ class child_model():
         dta = df.drop(['contraception choice'],axis=1)
         
         return dta
+    
+    def life(self):
+        life_value = 0
+        for t in range(self.meno_p_years):
+            life_value =+ (self.beta**t) * (self.eta2 * self.grid + self.eta3 * (self.grid**2))
+        
+        return life_value
+        
