@@ -32,7 +32,7 @@ def estimate(model,solver,data,theta0=[0.00001,0000.1,0.00001],twostep=0):
     pnames = ['mu','eta2','eta3']
     
     # Call BHHH optimizer
-    res = optimize.minimize(ll,theta0,args = (model, solver, data, pnames), method = 'trust-ncg',jac = grad, hess = hes, tol=1e-8,options={'maxiter': 3000})
+    res = optimize.minimize(ll,theta0,args = (model, solver, data, pnames), method = 'trust-ncg',jac = grad, hess = hes, tol=1e-8,options={'maxiter': 30000})
     # Update parameters
     model = updatepar(model,pnames,res.x)
     
@@ -41,7 +41,7 @@ def estimate(model,solver,data,theta0=[0.00001,0000.1,0.00001],twostep=0):
         pnames = ['mu','eta2', 'eta3','p']
         #theta0 = [model.mu, model.eta2, model.eta3] + model.p.tolist() # Starting values
         # Call BHHH optimizer
-        res = optimize.minimize(ll,theta0, args = (model,solver,data, pnames), method = 'trust-ncg',jac = grad, hess = hes, tol = 1e-8,options={'maxiter': 3000})
+        res = optimize.minimize(ll,theta0, args = (model,solver,data, pnames), method = 'trust-ncg',jac = grad, hess = hes, tol = 1e-8,options={'maxiter': 30000})
 
         # Update parameters
         model=updatepar(model,pnames,res.x)
@@ -126,11 +126,11 @@ def score(theta, model, solver, data, pnames):
     ## Derivative of utility function wrt. parameters
     dutil_dtheta=np.zeros((model.n, 3 + n_p, 2)) # shape is (gridsize, number of parameters, number of choices in utility function)
     dutil_dtheta[:,0, 0] = 0   # derivative of not contraception wrt mu
-    dutil_dtheta[:,0, 1] = 1   # derivative of contraception wrt mu
+    dutil_dtheta[:,0, 1] = -1   # derivative of contraception wrt mu
     dutil_dtheta[:,1, 0] = dc  # derivative of not contraception wrt eta2
     dutil_dtheta[:,1, 1] = dc  # derivative of contraception wrt eta2
-    dutil_dtheta[:,2, 0] = dc2 # derivative of not contraception wrt eta3
-    dutil_dtheta[:,2, 1] = dc2 # derivative of  contraception wrt eta3
+    dutil_dtheta[:,2, 0] = -dc2 # derivative of not contraception wrt eta3
+    dutil_dtheta[:,2, 1] = -dc2 # derivative of  contraception wrt eta3
 
     # Derivative of contraction operator wrt. utility parameters
     dbellman_dtheta=np.zeros((model.n, 3 + n_p)) # shape is (gridsize, number of parameters)
@@ -140,7 +140,7 @@ def score(theta, model, solver, data, pnames):
     # Derivative of contraction operator wrt. p
     if theta.size>3:        
         vk = model.cost + model.beta * model.P1 @ ev # Value of keeping
-        vr = model.mu + model.cost + model.beta * model.P2 @ ev # Value of replacing
+        vr = -model.mu + model.cost + model.beta * model.P2 @ ev # Value of replacing
         vmax = np.maximum(vk,vr) # Get maximum value
         dbellman_dpi = vmax+np.log(np.exp(vk-vmax)+np.exp(vr-vmax)) #Re-centered log-sum: Value function 
         for i_p in range(n_p): # loop over p
