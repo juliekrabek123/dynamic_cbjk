@@ -91,14 +91,12 @@ class child_model():
 
         # recenter Bellman by subtracting max(VK, VR)
         maxV = np.maximum(value_0, value_1) 
-        d = np.zeros(self.n)
-        for i in range(self.n):
-            if maxV[i] == value_0[i]:
-                d[i] = 0
-            else:
-                d[i] = 1
-        
-
+        # d = np.zeros(self.n)
+        # for i in range(self.n):
+        #     if maxV[i] == value_0[i]:
+        #         d[i] = 0
+        #     else:
+        #         d[i] = 1
 
         logsum = (maxV + np.log(np.exp(value_0-maxV)  +  np.exp(value_1-maxV)))  # Compute logsum to handle expectation over unobserved states
         ev1 = logsum # Bellman operator as integrated value
