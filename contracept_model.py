@@ -225,7 +225,6 @@ class child_model():
         t = data[:,4]             # year
         cc = data[:,10]         # contraception choice
         d = data[:,14]              # decision
-        #d = np.append(dl[1:], 0)    # replacement dummy
         x = data[:,9]               # number of children
         dx1 = data[:,8]            # birth indicator
 
