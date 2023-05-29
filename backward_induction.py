@@ -43,8 +43,6 @@ class backward_induction_class():
         #    Agent's beliefs about how the state will envolve given decision 
         self.p = np.array([0.2, 0.8])  
 
-        #self.pk = np.random.uniform(size=self.T)
-
         # j. update baseline parameters using keywords
         for key,val in kwargs.items():
             setattr(self,key,val) 
@@ -102,7 +100,7 @@ class backward_induction_class():
 
         return ev1, pk
     
-    def sim_data(self, bellman, ev0, ): 
+    def sim_data(self, bellman, ev0, pk): 
         
         """ Simulate data """
 
@@ -170,26 +168,3 @@ class backward_induction_class():
         df = pd.DataFrame(data) 
 
         return df
-
-    # def initialze(self):
-
-    #     T = self.T
-
-    #     # a. empty tables size of terminal value and T 
-    #     self.Vstar_bi = np.nan + np.zeros([self.terminal_W+1,T])
-    #     self.Cstar_bi = np.nan + np.zeros([self.terminal_W+1, T])
-
-    #     # b. 
-    #     self.Cstar_bi[:,T-1] = np.arange(self.terminal_W+1) 
-
-    #     # c. utility from period T-1 
-    #     self.Vstar_bi[:,T-1] = self.utility(self.Cstar_bi[:,T])
-    
-
-    # def utility(self):
-
-    #     N = self.N
-        
-    #     self.u_0 = self.eta1*N + self.eta2*N**2
-
-   
