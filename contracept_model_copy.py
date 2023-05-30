@@ -12,15 +12,14 @@ class child_model_new():
     def setup(self,**kwargs):     
   
         # a) parameters
-        # Spaces
-        
-       
+
         self.nR = 2
         self.nO = 2
         self.n = 5 # 
         self.nS = self.n*self.nR                         # Number of grid points
         self.max = 5                    # Max of mileage
         # b. number of couples 
+        
         self.N = 1000
         self.N2 = 500 # share of religious
 
