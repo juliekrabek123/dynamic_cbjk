@@ -35,10 +35,10 @@ class child_model():
         self.p = np.array([0.9, 0.1]) 
         self.p1 = np.array([0.6, 0.4]) 
         self.p2 = np.array([0.97, 0.03])            # Transition probability
-        self.eta1 = 0.13 
-        self.eta2 = 0.17 
-        self.eta3 = -0.05                                   # marginal utility of children
-        self.mu = -0.12                                      # Cost of contraception
+        self.eta1 = 0.23 
+        self.eta2 = 0.32 
+        self.eta3 = -0.15                                   # marginal utility of children
+        self.mu = -0.22                                      # Cost of contraception
         self.beta = 0.99                                      # Discount factor
 
         # b. update baseline parameters using keywords
@@ -147,7 +147,7 @@ class child_model():
 
         # Index 
         idx = np.tile(np.arange(1,N+1),(T,1))  
-        time = np.tile(np.arange(self.marriage_age,self.terminal_age),(N,1)).T
+        time = np.tile(np.arange(self.marriage_age-24,self.terminal_age-24),(N,1)).T
             
         # Draw random numbers
         # u_init =np.nan + np.zeros((1,N)) # initial condition
@@ -219,23 +219,41 @@ class child_model():
 
 
     def read_data(self): 
-        data = np.loadtxt(open("carro-mira.csv"), delimiter=",")
-        idx = data[:,3]             # couple id
-        t = data[:,4]             # year
-        cc = data[:,10]         # contraception choice
-        d = data[:,14]              # decision
-        x = data[:,9]               # number of children
-        dx1 = data[:,8]            # birth indicator
+        # Read data 
+        with open('carro-mira_new.txt', 'r') as file:
+        # Read the content of the file
+            content = file.read()
+
+            # Remove spaces and replace with commas
+            content_without_spaces = ','.join(content.split())
+
+            # Create DataFrame with separated columns
+            num_columns = 25  # Specify the desired number of columns
+            data = np.array(content_without_spaces.split(','))
+            reshaped_data = np.reshape(data, (-1, num_columns))
+            data = pd.DataFrame(reshaped_data)
+
+
+        idx = data.iloc[:,3]             # couple id
+        t = data.iloc[:,4]             # year
+        cc = data.iloc[:,10]         # contraception choice
+        d = data.iloc[:,14]              # decision
+        x = data.iloc[:,9]               # number of children
+        dx1 = data.iloc[:,8] 
+        t = t.astype(int)           # birth indicator
+        t = t-83
 
 
      
         # change type to integrer
+        idx = idx.astype(int)
         x = x.astype(int)
         dx1 = dx1.astype(int)
+        d = d.astype(int)
 
         # Collect in a dataframe
         
-        data = {'id': idx, 'year' : t,'contraception choice':cc, 'd': d, 'x': x, 'dx1': dx1}
+        data = {'id': idx, 't' : t,'contraception choice':cc, 'd': d, 'x': x, 'dx1': dx1}
         df= pd.DataFrame(data) 
 
         # Remove observations with missing lagged mileage
