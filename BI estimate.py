@@ -85,4 +85,4 @@ def ll(theta, model, solver,data, pnames, out=1, no_guess = False): # out=1 solv
         # Objective function (negative mean log likleihood)
         return np.mean(-log_lik)
 
-    return model,lik_pr, pk, ev, dev, d,x,dx1
+    return model,lik_pr, pnc, ev, dev, d,x,dx1
