@@ -5,6 +5,46 @@ import numpy as np
 
 def ll(theta, model, solver,data, pnames, out=1): # out=1 solve optimization
     """ Compute log-likelihood function """
+  
+    
+    # Unpack and convert to numpy array
+    x = np.array(data.x)        # x is the index of the observed state (number of children)
+    t = np.array(data.t)        # d is the observed decision
+    dx1 = np.array(data.dx1)    # dx1 is observed change in x (birth indicator)
+
+    # Update values
+    model = updatepar(model, pnames, theta)
+                               
+    # Solve the model
+    ev, pnc = solver.BackwardsInduction(model)
+
+    # Evaluate likelihood function
+    epsilon = 1e-10  # Small constant to avoid division by zero
+    lik_pr = pnc[x,t]  
+    #function = lik_pr * (1 - d)  + (1-lik_pr) * d 
+    function = lik_pr * (1 - d) * (model.p1_list[t,1]*dx1 + model.p1_list[t,0]*(1-dx1)) + (1-lik_pr) * d *(model.p2_list[t,1]*dx1 + model.p2_list[t,0]*(1-dx1)) 
+
+    function = np.maximum(function, epsilon)  # Add small constant to avoid zero values
+    log_lik = np.log(function) #take log of likelihood function
+
+    if out == 1:
+        # Objective function (negative mean log likleihood)
+        return np.mean(-log_lik)
+
+    return model,lik_pr, pnc, ev, d,x,dx1 #, dev
+
+
+def updatepar(par,parnames, parvals):
+    """ Update parameters """
+    for i,parname in enumerate(parnames):
+        # First two parameters are scalars
+        parval = parvals[i]
+        setattr(par,parname,parval)
+    return par
+
+
+def ll3(theta, model, solver,data, pnames, out=1): # out=1 solve optimization
+    """ Compute log-likelihood function """
     #global ev # Use global variable to store value function to use as starting value for next iteration
     
     # Unpack and convert to numpy array
@@ -15,19 +55,15 @@ def ll(theta, model, solver,data, pnames, out=1): # out=1 solve optimization
 
     # Update values
     model = updatepar(model, pnames, theta)
-    model.create_grid()                     # Update grid
                                
-
     # Solve the model
-    ev, pnc , dev = solver.BackwardsInduction(model, input_data = data)
-
-
-
+    ev, pnc = solver.BackwardsInduction3(model)
     
 
     # Evaluate likelihood function
     epsilon = 1e-10  # Small constant to avoid division by zero
     lik_pr = pnc[x,t]  
+    #function = lik_pr * (1 - d)  + (1-lik_pr) * d 
     function = lik_pr * (1 - d) * (model.p1_list[t,1]*dx1 + model.p1_list[t,0]*(1-dx1)) + (1-lik_pr) * d *(model.p2_list[t,1]*dx1 + model.p2_list[t,0]*(1-dx1)) 
 
     function = np.maximum(function, epsilon)  # Add small constant to avoid zero values
@@ -37,16 +73,8 @@ def ll(theta, model, solver,data, pnames, out=1): # out=1 solve optimization
         # Objective function (negative mean log likleihood)
         return np.mean(-log_lik)
 
-    return model,lik_pr, pnc, ev, d,x,dx1, dev
+    return model,lik_pr, pnc, ev, d,x,dx1 #, dev
 
-
-def updatepar(par,parnames, parvals):
-    """ Update parameters """
-    for i,parname in enumerate(parnames):
-        # First two parameters are scalars
-        parval = parvals[i]
-        setattr(par,parname,parval)
-    return par
 
 
 
