@@ -4,71 +4,61 @@
 import numpy as np
 import time
 import pandas as pd
+import copy
 
-class child_model():
+class child_model3():
     def __init__(self,**kwargs):
         self.setup(**kwargs)
 
     def setup(self,**kwargs):     
   
         # a) parameters
-        # Spaces
-        self.nR = 2
-        self.n = 5 # 
-        self.nX = self.n*self.nR                     # Number of grid points
-        self.max = 5                    # Max of mileage
-        # b. number of couples 
+ 
+        self.n = 5                    # Number of possible states/grid points
+        self.max = 5                    # Max of children groups
+        # b. number of couples for simulations
         self.N = 1000
-        self.N2 = 500 # share of religious
+       
 
-        # b. terminal contracept age 
-        self.terminal_age = 45
+        # b. Age and timespans
+        self.terminal_age = 45 #Assumed age of menopause
+    
+        self.marriage_age = 18 #minimum age of marriage 
 
-        # c. marriage age
-        self.marriage_age = 18
+        self.death_age = 76 # Assumed age at death
 
-        self.death_age = 76
+        self.meno_p_years = self.death_age - self.terminal_age #non-fertile years
 
-        self.meno_p_years = self.death_age - self.terminal_age  
+        self.T = self.terminal_age - self.marriage_age #fertile years 
 
-        # d. number of time periods doing fertile years 
-        self.T = self.terminal_age - self.marriage_age
+        # c. structual parameters
+       
+        self.p1 = np.array([0.6, 0.4]) # Transition probability when not contracepting
+        self.p2 = np.array([0.97, 0.03])   # Transition probability when contracepting
+        self.p1_list = np.ones([self.T,2]) *self.p1 # transistion probabilities at each age
+        self.p2_list = np.ones([self.T,2])  *self.p2
 
-        # structual parameters
-        self.p = np.array([0.9, 0.1]) 
-        self.p1 = np.array([0.6, 0.4]) 
-        self.p2 = np.array([0.97, 0.03])            # Transition probability
-        self.p1_list = np.ones([self.T,2])*self.p1
-        self.p2_list = np.ones([self.T,2])*self.p2
-        self.eta1 = 0.23 
-        self.eta2 = 0.3
-        self.eta3 = -0.1                                  # marginal utility of children
-        self.mu1 = -0.2                                 # Cost of contraception
-        self.mu2 = -0.4                                       # Cost of contraception when religious
-        self.beta = 0.95                                     # Discount factor
+        self.eta1 = 0.2  #marginal utility of leaving childlessness
+        self.eta2 =  1.4  #marginal utility of children
+        self.eta3 = -0.35  #marginal utility of children squared                           
+        self.mu1 = 0.88  # Cost of contraception                                    
+        self.beta = 0.95 # Discount factor
 
-        # b. update baseline parameters using keywords
+        # d. update baseline parameters using keywords
         for key,val in kwargs.items():
             setattr(self,key,val) 
 
-        # c. Create grid
+        # e. Create grid
         self.create_grid()
 
     def create_grid(self):
-        # self.grid = np.arange(0,self.n) # milage grid
-        # self.cost = self.eta2*self.grid + self.eta3*(self.grid**2)   # cost function
-        # self.state_transition() 
-    #Generate all combinations of inputs
-        input2 = np.arange(self.nR)
-        input1 = np.arange(self.n)
-        input1_mesh, input2_mesh  = np.meshgrid(input1, input2)
-
-        # Create the array with different combinations
-        self.grid = np.column_stack((input1_mesh.flatten(), input2_mesh.flatten()))
-
-        self.cost0 = self.eta2*self.grid[:,0] + self.eta3*(self.grid[:,0]**2)   # cost function
-        self.cost1 = self.eta2*self.grid[:,0] + self.eta3*(self.grid[:,0]**2) + self.mu1*(1-self.grid[:,1]) + self.mu2* self.grid[:,1]  # cost function
+        self.grid = np.arange(0,self.n) # grid for number of children
+        self.divide =copy.copy(self.grid)  # grid for calculating eta1
+        self.divide[0] = 1  # Making sure not to divide by zero
+        self.utility =  self.eta2*self.grid + self.eta3*(self.grid**2)
+        #self.utility =self.eta1*(self.grid/self.divide) + self.eta2*self.grid + self.eta3*(self.grid**2)   # utilty function without choice
         self.state_transition() 
+    
 
     def state_transition(self):
         '''Compute transition probability matrixes conditional on choice'''
@@ -83,17 +73,6 @@ class child_model():
                 P1[i][i:] = p1[:self.n-len(p1)-i]
                 P1[i][-1] = 1.0-P1[i][:-1].sum()
 
-        matrix1 = P1
-        matrix4 = matrix1
-        matrix2 = np.zeros([self.n, self.n])
-        matrix3 = matrix2
-
-        # Append matrices horizontally
-        top = np.concatenate((matrix1, matrix2), axis=1)
-        buttom = np.concatenate((matrix3, matrix4), axis=1)
-
-        # Append matrices vertically
-        P1= np.concatenate((top, buttom), axis=0)
 
         #conditional on d=1, contracept
         p2 = np.append(self.p2,1-np.sum(self.p2)) # Get transition probabilities
@@ -107,15 +86,6 @@ class child_model():
             else:
                 P2[i][i:] = p2[:self.n-len(p2)-i]
                 P2[i][-1] = 1.0-P2[i][:-1].sum()
-        matrix1 = P2
-        matrix4 = matrix1
-   
-
-        # Append matrices horizontally
-        top = np.concatenate((matrix1, matrix2), axis=1)
-        buttom = np.concatenate((matrix3, matrix4), axis=1)
-        # Append matrices vertically
-        P2 = np.concatenate((top, buttom), axis=0)
 
         self.P1 = P1
         self.P2 = P2
@@ -124,20 +94,12 @@ class child_model():
         '''Evaluate Bellman operator, choice probability and Frechet derivative - written in integrated value form'''
 
         # Value of options:
-        value_0 = self.cost0 + self.beta * self.P1 @ ev0 # nx1 matrix
-        value_1 = self.cost1 + self.beta * self.P2 @ ev0   # nx1 matrix
+        value_0 = self.utility + self.beta * self.P1 @ ev0 # nx1 matrix
+        value_1 = self.mu1 + self.utility + self.beta * self.P2 @ ev0   # nx1 matrix
 
         # recenter Bellman by subtracting max(VK, VR)
         maxV = np.maximum(value_0, value_1) 
-        # d = np.zeros(self.n)
-        # for i in range(self.n):
-        #     if maxV[i] == value_0[i]:
-        #         d[i] = 0
-        #     else:
-        #         d[i] = 1
-
-        logsum = (maxV + np.log(np.exp(value_0-maxV)  +  np.exp(value_1-maxV)))
-        #print(logsum)  # Compute logsum to handle expectation over unobserved states
+        logsum = (maxV + np.log(np.exp(value_0-maxV)  +  np.exp(value_1-maxV))) # Compute logsum to handle expectation over unobserved states
         ev1 = logsum # Bellman operator as integrated value
 
         if output == 1:
@@ -178,7 +140,6 @@ class child_model():
     def sim_data(self, pnc):
         # Set N (number of couples) and T (fertile years)
         N = self.N
-        N2 = self.N2
         T = self.T
 
         # Set random seed 
@@ -190,33 +151,33 @@ class child_model():
             
         # Draw random numbers
         # u_init =np.nan + np.zeros((1,N)) # initial condition
-        u_d = np.random.rand(T,N) 
-        u_dx = np.random.rand(T,N)                # decision/choice
+        u_d = np.random.rand(T,N)  # decision/choice
+        u_dx = np.random.rand(T,N)               
 
         # Find states and choices
-        #u_dx  = np.zeros((T,N), dtype=int)
+
         ## state 
         x  = np.zeros((T,N), dtype=int)
         ## state next period 
         x1 = np.zeros((T,N), dtype=int)
-        r  = np.concatenate((np.zeros((T,N2), dtype=int), np.ones((T,N2), dtype=int)), axis=1)
 
+        #birth indicator
         dx1 = np.zeros((T,N), dtype=int)
         ## decision/choices
         d  = np.zeros((T,N), dtype=int) # np.nan + np.zeros((T,N))
         ## initial condition
         x[0,:] = np.zeros((1,N)) # u_init.astype(int)
 
-
+        #loop over years and couples
         for t in range(T):
             for i in range(N):
-                if r[t,i] == 1: #if religious
-                    d[t,i] = u_d[t,i] < 1-pnc[x[t,i]+5,t] 
-                d[t,i] = u_d[t,i] < 1-pnc[x[t,i],t]
+ 
+                d[t,i] = u_d[t,i] < 1-pnc[x[t,i],t] #Set d=1 if u_d uncer probability of contraception
                 
+                # birth probability conditional of choice
                 if d[t,i] == 0:
                 # Find states and choices
-                    csum_p1 = np.cumsum(self.p1)               # Cumulated sum of p 
+                    csum_p1 = np.cumsum(self.p1)               # Cumulated sum of p1 
                 ## this loop will iterate twice and dx1 will be incremented by either 0 or 1 on each iteration depending on the result of the comparison
                     dx1[t,i] = 0
                     for val in csum_p1:
@@ -226,7 +187,7 @@ class child_model():
 
                 else:
                     # Find states and choices
-                    csum_p2 = np.cumsum(self.p2)               # Cumulated sum of p 
+                    csum_p2 = np.cumsum(self.p2)               # Cumulated sum of p2 
                 ## this loop will iterate twice and dx1 will be incremented by either 0 or 1 on each iteration depending on the result of the comparison
                     dx1[t,i] = 0
 
@@ -235,26 +196,24 @@ class child_model():
                 # Find states and choices
             
                 x1[t,i] = np.minimum(x[t,i]+dx1[t,i], self.n-1) # State transition, minimum to avoid exceeding the maximum number of children
-            
-                if r[t,i] == 1: #if religious:
-                     x[t,i] = x[t,i]+5
-            # Ensure that the number of children cannot decrease
-            #x1[t,i] = np.maximum(x1[t,i], x[t,i])
 
+                # set x1 to state in next period
                 if t < T-1:
                     x[t+1,i] = x1[t,i]
+  
 
 
         # reshape 
         idx = np.reshape(idx,T*N,order='F')
         time   = np.reshape(time,T*N,order='F')
-        r   = np.reshape(r,T*N,order='F')
         d   = np.reshape(d,T*N,order='F')
         x   = np.reshape(x,T*N,order='F')   # add 1 to make index start at 1 as in data - 1,2,...,n
         x1  = np.reshape(x1,T*N,order='F')  # add 1 to make index start at 1 as in data - 1,2,...,n
         dx1 = np.reshape(dx1,T*N,order='F')
 
-        data = {'id': idx,'t': time, 'r': r,'d': d, 'x': x, 'dx1': dx1, 'x1': x1}
+        # Make columns and name them
+        data = {'id': idx,'t': time,'d': d, 'x': x, 'dx1': dx1, 'x1': x1}
+        # set type to dataframe
         df = pd.DataFrame(data) 
 
         return(df)
@@ -281,11 +240,9 @@ class child_model():
         t = data.iloc[:,5]             # year
         cc = data.iloc[:,10]         # contraception choice
         d = data.iloc[:,14]              # decision
-        n = data.iloc[:,9]
-        x = data.iloc[:,9]                # number of children
-        dx1 = data.iloc[:,8]
-        r = data.iloc[:,12] 
-        t = t.astype(int)           # birth indicator
+        x = data.iloc[:,9]               # number of children
+        dx1 = data.iloc[:,8]            # birth indicator
+        t = t.astype(int)           
         t = t-18
 
 
@@ -295,24 +252,16 @@ class child_model():
         x = x.astype(int)
         dx1 = dx1.astype(int)
         d = d.astype(int)
-        r = r.astype(int)
-        n = n.astype(int)
-     
 
-        for i in range(len(t)):
-            if r[i] == 1:
-                x[i] = x[i]+5
         # Collect in a dataframe
         
-        data = {'id': idx, 't' : t, 'r' : r,'contraception choice':cc, 'n' : n, 'd': d, 'x': x, 'dx1': dx1}
+        data = {'id': idx, 't' : t,'contraception choice':cc, 'd': d, 'x': x, 'dx1': dx1}
         df= pd.DataFrame(data) 
 
         # Remove observations with missing lagged mileage
         df = df.drop(df[df['contraception choice'] == 3].index, axis=0)
         df = df.drop(df[df['t'] < 0].index, axis=0)
-        df = df.drop(df[df['n'] > 4].index, axis=0)
-
-
+        df = df.drop(df[df['x'] > 4].index, axis=0)
 
 
 
