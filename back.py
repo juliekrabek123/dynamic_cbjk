@@ -35,8 +35,6 @@ def BackwardsInduction(model):
         pnc[:, t] = pnc_t
         #dev[t] =  dev0 + dev1
         #dev0 = dev[t]
-
-
     return V.round(3), pnc.round(3) #, dev
 
 
@@ -53,7 +51,6 @@ def BackwardsInduction3(model):
     #dev0 = np.zeros((model.n,model.n))
 
 
-    
     # Step 3: Backward induction
 
     for t in range(T - 2, -1, -1):
