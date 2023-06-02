@@ -43,7 +43,7 @@ class child_model3():
         self.eta2 =  1.40  #marginal utility of children
         self.eta3 = -0.35  #marginal utility of children squared                           
         self.mu1 = 0.88  # Cost of contraception                                    
-        self.beta = 0.95 # Discount factor
+        self.beta = 0.90 # Discount factor
 
         # d. update baseline parameters using keywords
         for key,val in kwargs.items():
@@ -54,10 +54,10 @@ class child_model3():
 
     def create_grid(self):
         self.grid = np.arange(0,self.n) # grid for number of children
-        #self.divide =copy.copy(self.grid)  # grid for calculating eta1
-        #self.divide[0] = 1  # Making sure not to divide by zero
-        self.utility =  self.eta2*self.grid + self.eta3*(self.grid**2)
-        #self.utility =self.eta1*(self.grid/self.divide) + self.eta2*self.grid + self.eta3*(self.grid**2)   # utilty function without choice
+        self.divide =copy.copy(self.grid)  # grid for calculating eta1
+        self.divide[0] = 1  # Making sure not to divide by zero
+        #self.utility =  self.eta2*self.grid + self.eta3*(self.grid**2)
+        self.utility =self.eta1*(self.grid/self.divide) + self.eta2*self.grid + self.eta3*(self.grid**2)   # utilty function without choice
         self.state_transition() 
     
 
@@ -117,24 +117,24 @@ class child_model3():
             return ev1, pnc, value_0, value_1
 
         # Compute derivative of Bellman operator
-        # dev1 = self.dbellman(pnc)
+        dev1 = self.dbellman(pnc)
 
-        # return ev1, pnc, dev1
+        return ev1, pnc, dev1
 
-    # def dbellman(self,pnc): 
-    #     '''Compute derivative of Bellman operator'''
-    #     dev1 = np.zeros((self.n,self.n))
-    #     for d in range(2): # Loop over choices 
-    #         if d == 0:
-    #             P = self.P1
-    #             choice_prob =  pnc
-    #         else:
-    #             P = self.P2
-    #             choice_prob = 1-pnc
+    def dbellman(self,pnc): 
+        '''Compute derivative of Bellman operator'''
+        dev1 = np.zeros((self.n,self.n))
+        for d in range(2): # Loop over choices 
+            if d == 0:
+                P = self.P1
+                choice_prob =  pnc
+            else:
+                P = self.P2
+                choice_prob = 1-pnc
 
-    #         dev1 += self.beta * choice_prob.reshape(-1, 1) * P 
+            dev1 += self.beta * choice_prob.reshape(-1, 1) * P 
         
-    #     return dev1
+        return dev1
 
 
 
@@ -178,7 +178,7 @@ class child_model3():
                 # birth probability conditional of choice
                 if d[t,i] == 0:
                 # Find states and choices
-                    csum_p1 = np.cumsum(self.p1)               # Cumulated sum of p1 
+                    csum_p1 = np.cumsum(self.p1_list[t])               # Cumulated sum of p1 
                 ## this loop will iterate twice and dx1 will be incremented by either 0 or 1 on each iteration depending on the result of the comparison
                     dx1[t,i] = 0
                     for val in csum_p1:
@@ -188,7 +188,7 @@ class child_model3():
 
                 else:
                     # Find states and choices
-                    csum_p2 = np.cumsum(self.p2)               # Cumulated sum of p2 
+                    csum_p2 = np.cumsum(self.p2_list[t])               # Cumulated sum of p2 
                 ## this loop will iterate twice and dx1 will be incremented by either 0 or 1 on each iteration depending on the result of the comparison
                     dx1[t,i] = 0
 
@@ -238,13 +238,13 @@ class child_model3():
 
 
         idx = data.iloc[:,3]             # couple id
-        t = data.iloc[:,5]             # year
+        t = data.iloc[:,5]             # woman's age
         cc = data.iloc[:,10]         # contraception choice
         d = data.iloc[:,14]              # decision
         x = data.iloc[:,9]               # number of children
         dx1 = data.iloc[:,8]            # birth indicator
         t = t.astype(int)           
-        t = t-18
+        t = t-18 # subtract 18 so that age 18 will become the first period 0
 
 
      

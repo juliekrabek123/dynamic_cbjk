@@ -41,10 +41,10 @@ class child_model():
         self.p2 = np.array([0.97, 0.03])            # Transition probability
         self.p1_list = np.ones([self.T,2])*self.p1
         self.p2_list = np.ones([self.T,2])*self.p2
-        self.eta1 = 0.2 
-        self.eta2 = 0.9
-        self.eta3 = -0.2                                  # marginal utility of children
-        self.mu1 = 0.2                                 # Cost of contraception
+        self.eta1 = -0.1 
+        self.eta2 = 0.8
+        self.eta3 = -0.3                                  # marginal utility of children
+        self.mu1 = 0.4                                 # Cost of contraception
         self.mu2 = -0.4                                       # Cost of contraception when religious
         self.beta = 0.95                                     # Discount factor
 
@@ -67,8 +67,9 @@ class child_model():
         # Create the array with different combinations
         self.grid = np.column_stack((input1_mesh.flatten(), input2_mesh.flatten()))
         self.divide =copy.copy(self.grid)  # grid for calculating eta1
-        self.divide[0,0] = 1
-        self.divide[5,0] = 1   # Making sure not to divide by zero
+        self.divide[5,0] = 1
+        self.divide[0,0] = 1   # Making sure not to divide by zero
+        #self.cost = self.eta1*(self.grid[:,1]*self.grid[:,0]) + self.eta2*self.grid[:,0] + self.eta3*(self.grid[:,0]**2)
         self.cost0 = self.eta1*self.grid[:,0]/self.divide[:,0] + self.eta2*self.grid[:,0] + self.eta3*(self.grid[:,0]**2)   # cost function
         self.cost1 = self.eta1*self.grid[:,0]/self.divide[:,0] + self.eta2*self.grid[:,0] + self.eta3*(self.grid[:,0]**2) + self.mu1*(1-self.grid[:,1]) + self.mu2* self.grid[:,1]  # cost function
         self.state_transition() 
@@ -157,24 +158,24 @@ class child_model():
             return ev1, pnc, value_0, value_1
 
         # Compute derivative of Bellman operator
-        # dev1 = self.dbellman(pnc)
+        dev1 = self.dbellman(pnc)
 
-        # return ev1, pnc, dev1
+        return ev1, pnc, dev1
 
-    # def dbellman(self,pnc): 
-    #     '''Compute derivative of Bellman operator'''
-    #     dev1 = np.zeros((self.n,self.n))
-    #     for d in range(2): # Loop over choices 
-    #         if d == 0:
-    #             P = self.P1
-    #             choice_prob =  pnc
-    #         else:
-    #             P = self.P2
-    #             choice_prob = 1-pnc
+    def dbellman(self,pnc): 
+        '''Compute derivative of Bellman operator'''
+        dev1 = np.zeros((self.n,self.n))
+        for d in range(2): # Loop over choices 
+            if d == 0:
+                P = self.P1
+                choice_prob =  pnc
+            else:
+                P = self.P2
+                choice_prob = 1-pnc
 
-    #         dev1 += self.beta * choice_prob.reshape(-1, 1) * P 
+            dev1 += self.beta * choice_prob.reshape(-1, 1) * P 
         
-    #     return dev1
+        return dev1
 
 
 
@@ -214,12 +215,12 @@ class child_model():
         for t in range(T):
             for i in range(N):
                 if r[t,i] == 1: #if religious
-                    d[t,i] = u_d[t,i] < 1-pnc[x[t,i]+5,t] 
+                    d[t,i] = u_d[t,i] < 1-pnc[x[t,i]+self.n,t] 
                 d[t,i] = u_d[t,i] < 1-pnc[x[t,i],t]
                 
                 if d[t,i] == 0:
                 # Find states and choices
-                    csum_p1 = np.cumsum(self.p1)               # Cumulated sum of p 
+                    csum_p1 = np.cumsum(self.p1_list[t])               # Cumulated sum of p 
                 ## this loop will iterate twice and dx1 will be incremented by either 0 or 1 on each iteration depending on the result of the comparison
                     dx1[t,i] = 0
                     for val in csum_p1:
@@ -229,7 +230,7 @@ class child_model():
 
                 else:
                     # Find states and choices
-                    csum_p2 = np.cumsum(self.p2)               # Cumulated sum of p 
+                    csum_p2 = np.cumsum(self.p2_list[t])               # Cumulated sum of p 
                 ## this loop will iterate twice and dx1 will be incremented by either 0 or 1 on each iteration depending on the result of the comparison
                     dx1[t,i] = 0
 
@@ -240,7 +241,7 @@ class child_model():
                 x1[t,i] = np.minimum(x[t,i]+dx1[t,i], self.n-1) # State transition, minimum to avoid exceeding the maximum number of children
             
                 if r[t,i] == 1: #if religious:
-                     x[t,i] = x[t,i]+5
+                     x[t,i] = x[t,i]+self.n
             # Ensure that the number of children cannot decrease
             #x1[t,i] = np.maximum(x1[t,i], x[t,i])
 
@@ -313,7 +314,7 @@ class child_model():
         # Remove observations with missing lagged mileage
         df = df.drop(df[df['contraception choice'] == 3].index, axis=0)
         df = df.drop(df[df['t'] < 0].index, axis=0)
-        df = df.drop(df[df['n'] > 4].index, axis=0)
+        df = df.drop(df[df['n'] > 3].index, axis=0)
 
 
 
