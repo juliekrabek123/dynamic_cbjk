@@ -4,6 +4,7 @@
 import numpy as np
 import time
 import pandas as pd
+import copy
 
 class child_model():
     def __init__(self,**kwargs):
@@ -40,10 +41,10 @@ class child_model():
         self.p2 = np.array([0.97, 0.03])            # Transition probability
         self.p1_list = np.ones([self.T,2])*self.p1
         self.p2_list = np.ones([self.T,2])*self.p2
-        self.eta1 = 0.23 
-        self.eta2 = 0.3
-        self.eta3 = -0.1                                  # marginal utility of children
-        self.mu1 = -0.2                                 # Cost of contraception
+        self.eta1 = 0.2 
+        self.eta2 = 0.9
+        self.eta3 = -0.2                                  # marginal utility of children
+        self.mu1 = 0.2                                 # Cost of contraception
         self.mu2 = -0.4                                       # Cost of contraception when religious
         self.beta = 0.95                                     # Discount factor
 
@@ -65,9 +66,11 @@ class child_model():
 
         # Create the array with different combinations
         self.grid = np.column_stack((input1_mesh.flatten(), input2_mesh.flatten()))
-
-        self.cost0 = self.eta2*self.grid[:,0] + self.eta3*(self.grid[:,0]**2)   # cost function
-        self.cost1 = self.eta2*self.grid[:,0] + self.eta3*(self.grid[:,0]**2) + self.mu1*(1-self.grid[:,1]) + self.mu2* self.grid[:,1]  # cost function
+        self.divide =copy.copy(self.grid)  # grid for calculating eta1
+        self.divide[0,0] = 1
+        self.divide[5,0] = 1   # Making sure not to divide by zero
+        self.cost0 = self.eta1*self.grid[:,0]/self.divide[:,0] + self.eta2*self.grid[:,0] + self.eta3*(self.grid[:,0]**2)   # cost function
+        self.cost1 = self.eta1*self.grid[:,0]/self.divide[:,0] + self.eta2*self.grid[:,0] + self.eta3*(self.grid[:,0]**2) + self.mu1*(1-self.grid[:,1]) + self.mu2* self.grid[:,1]  # cost function
         self.state_transition() 
 
     def state_transition(self):

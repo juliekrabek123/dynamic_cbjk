@@ -14,10 +14,11 @@ class child_model3():
   
         # a) parameters
  
-        self.n = 5                    # Number of possible states/grid points
+        self.n = 5   
+        self.nX = 5                  # Number of possible states/grid points
         self.max = 5                    # Max of children groups
         # b. number of couples for simulations
-        self.N = 1000
+        self.N = 2748
        
 
         # b. Age and timespans
@@ -34,12 +35,12 @@ class child_model3():
         # c. structual parameters
        
         self.p1 = np.array([0.6, 0.4]) # Transition probability when not contracepting
-        self.p2 = np.array([0.97, 0.03])   # Transition probability when contracepting
+        self.p2 = np.array([0.9999999, 0.0000001])   # Transition probability when contracepting
         self.p1_list = np.ones([self.T,2]) *self.p1 # transistion probabilities at each age
         self.p2_list = np.ones([self.T,2])  *self.p2
 
         self.eta1 = 0.2  #marginal utility of leaving childlessness
-        self.eta2 =  1.4  #marginal utility of children
+        self.eta2 =  1.40  #marginal utility of children
         self.eta3 = -0.35  #marginal utility of children squared                           
         self.mu1 = 0.88  # Cost of contraception                                    
         self.beta = 0.95 # Discount factor
@@ -53,8 +54,8 @@ class child_model3():
 
     def create_grid(self):
         self.grid = np.arange(0,self.n) # grid for number of children
-        self.divide =copy.copy(self.grid)  # grid for calculating eta1
-        self.divide[0] = 1  # Making sure not to divide by zero
+        #self.divide =copy.copy(self.grid)  # grid for calculating eta1
+        #self.divide[0] = 1  # Making sure not to divide by zero
         self.utility =  self.eta2*self.grid + self.eta3*(self.grid**2)
         #self.utility =self.eta1*(self.grid/self.divide) + self.eta2*self.grid + self.eta3*(self.grid**2)   # utilty function without choice
         self.state_transition() 
@@ -270,10 +271,5 @@ class child_model3():
         
         return dta
     
-    def life(self):
-        life_value = 0
-        for t in range(self.meno_p_years):
-            life_value =+ (self.beta**t) * (self.eta2 * self.grid + self.eta3 * (self.grid**2))
-        
-        return life_value
+
         

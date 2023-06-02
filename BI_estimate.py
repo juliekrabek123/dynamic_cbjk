@@ -1,5 +1,6 @@
 
 import numpy as np
+from scipy.optimize import minimize
 
 
 
@@ -8,7 +9,8 @@ def ll(theta, model, solver,data, pnames, out=1): # out=1 solve optimization
   
     
     # Unpack and convert to numpy array
-    x = np.array(data.x)        # x is the index of the observed state (number of children)
+    x = np.array(data.x) 
+    d = np.array(data.d)       # x is the index of the observed state (number of children)
     t = np.array(data.t)        # d is the observed decision
     dx1 = np.array(data.dx1)    # dx1 is observed change in x (birth indicator)
 
@@ -60,7 +62,7 @@ def ll3(theta, model, solver,data, pnames, out=1): # out=1 solve optimization
     ev, pnc = solver.BackwardsInduction3(model)
     
 
-    # Evaluate likelihood function
+    # Evaluate likelihood functionnX
     epsilon = 1e-10  # Small constant to avoid division by zero
     lik_pr = pnc[x,t]  
     #function = lik_pr * (1 - d)  + (1-lik_pr) * d 
@@ -78,30 +80,30 @@ def ll3(theta, model, solver,data, pnames, out=1): # out=1 solve optimization
 
 
 
-def estimate(model,solver,data,theta0=[0,0]):
+def estimate(model,solver,data,theta0=[0.1,0.1,0.1,0.1,0.1]):
     """" Estimate model using NFXP"""
     
     samplesize = data.shape[0]
     
     # Estimate RC and C
-    pnames = ['eta2','eta3']
+    pnames = ['eta1', 'eta2','eta3', 'mu1','mu2']
     
     # Call BHHH optimizer
-    res = optimize.minimize(ll,theta0,args = (model, solver, data, pnames), method = 'trust-ncg',jac = grad, hess = hes, tol=1e-8)
+    res = minimize(ll,theta0,args = (model, solver, data, pnames), method = 'Nelder-Mead' ) #,jac = grad, hess = hes, tol=1e-8)
     # Update parameters
-    model = updatepar(model,pnames,res.x)
+    #model = updatepar(model,pnames,res.x)
     
 
     # Converged: "trust-ncg tends to be very conservative about convergence, and will often return status 2 even when the solution is good."
-    converged   =   (res.status == 2 or res.status ==0)
+    #converged   =   (res.status == 2 or res.status ==0)
 
     # Compute Variance-Covaiance matrix
-    h = hes(res.x, model, solver,data, pnames) # Hessian
-    Avar = np.linalg.inv(h*samplesize) # Variance-Covariance matrix from information matrix equality
+    #h = hes(res.x, model, solver,data, pnames) # Hessian
+   # Avar = np.linalg.inv(h*samplesize) # Variance-Covariance matrix from information matrix equality
 
     theta_hat = res.x # unpack estimates
     
-    return model, res, pnames, theta_hat, Avar, converged
+    return model, res, pnames, theta_hat #, Avar, converged
 
 
 def score(theta, model, solver, data, pnames):
